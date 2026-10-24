@@ -27,7 +27,7 @@ public class UsersApp {
         // המיון לפי שם המשתמש רגיש לאותיות גדולות וקטנות; כפילויות נשמרות.
         Collections.sort(users, (u1, u2) -> u1.getUsername().compareTo(u2.getUsername()));
         for (User user : users) {
-            output.println(user.getUsername() + " " + user.getPassword());
+            output.print(user.getUsername() + " " + user.getPassword() + "\n");
         }
     }
 

@@ -1,0 +1,4 @@
++first_error@this.row passw0rd%
+B_Kernighan@mail.com !a01011942
+hello@world.net 01041972^H
+thisEmailIsok@wow0123456789.co.il @1234Abcd
