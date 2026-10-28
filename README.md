@@ -12,3 +12,5 @@ The program reads `users.txt` from the working directory. Sorted users are writt
 to standard output with LF (`\n`) line endings on every platform so redirected
 output can be compared byte-for-byte with the expected `out.txt`. Diagnostics
 remain on standard error and are not included in `out1.txt`.
+
+test
