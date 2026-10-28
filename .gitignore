@@ -27,3 +27,7 @@ replay_pid*
 # test file + pdf
 *.txt
 *.pdf
+
+# IntelliJ IDEA
+.idea/
+*.iml
