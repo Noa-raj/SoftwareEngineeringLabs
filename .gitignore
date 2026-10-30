@@ -31,3 +31,6 @@ replay_pid*
 # IntelliJ IDEA
 .idea/
 *.iml
+
+#test folder
+src/test/
