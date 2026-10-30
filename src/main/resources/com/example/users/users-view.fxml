@@ -7,8 +7,7 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 
-<VBox alignment="CENTER" prefHeight="400.0" prefWidth="602.0" spacing="16.0"
-      xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1">
+<VBox alignment="CENTER" prefHeight="400.0" prefWidth="602.0" spacing="16.0" xmlns="http://javafx.com/javafx/24.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="LoginController">
     <padding>
         <Insets bottom="24.0" left="24.0" right="24.0" top="24.0" />
     </padding>
@@ -21,5 +20,6 @@
                 <Label prefHeight="57.0" prefWidth="96.0" text="Password:" wrapText="true" />
                 <TextField fx:id="passField" prefHeight="26.0" prefWidth="444.0" />
         </HBox>
-        <Button mnemonicParsing="false" text="Log in" />
+   <Label fx:id="errorLabel" text="Invalid username or password" textFill="RED" visible="false" />
+        <Button mnemonicParsing="false" onAction="#click" text="Log in" />
 </VBox>
