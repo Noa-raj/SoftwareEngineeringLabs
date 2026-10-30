@@ -7,8 +7,17 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 
+/**
+ * Reads user credentials from {@code users.txt}, reports invalid entries, and prints valid users.
+ */
 // קוראת משתמשים מקובץ, מדווחת על שורות שגויות ומדפיסה משתמשים תקינים במיון.
 public class UsersApp {
+    /**
+     * Reads {@code users.txt} from the process working directory and prints valid users sorted by
+     * username. File-read errors are reported to standard error.
+     *
+     * @param args command-line arguments; currently unused
+     */
     public static void main(String[] args) {
         // הקובץ נפתח מתוך תיקיית העבודה שממנה מריצים את התוכנית.
         Path inputFile = Paths.get("users.txt");
@@ -22,6 +31,12 @@ public class UsersApp {
         }
     }
 
+    /**
+     * Sorts the supplied users by username and prints each username/password pair on its own line.
+     *
+     * @param users users to sort and print; this list is sorted in place
+     * @param output destination for the formatted user records
+     */
     // ממיינת את הרשימה עצמה ומדפיסה כל משתמש בשורה נפרדת.
     static void printSortedUsers(ArrayList<User> users, PrintStream output) {
         // המיון לפי שם המשתמש רגיש לאותיות גדולות וקטנות; כפילויות נשמרות.
@@ -31,6 +46,18 @@ public class UsersApp {
         }
     }
 
+    /**
+     * Reads user records from a file, keeping valid records and writing diagnostics for invalid
+     * lines.
+     *
+     * <p>Each record is expected to contain a username and password separated by spaces. File
+     * errors are not swallowed and are passed to the caller.</p>
+     *
+     * @param inputFile path to the input file
+     * @param diagnostics destination for invalid-line messages
+     * @return valid users in the order they appear in the file
+     * @throws IOException if the file cannot be opened or read
+     */
     // מחזירה רשימה של משתמשים תקינים בלבד; שגיאות קובץ מועברות למתודה הקוראת.
     static ArrayList<User> readUsers(Path inputFile, PrintStream diagnostics) throws IOException {
         ArrayList<User> users = new ArrayList<>();

@@ -1,5 +1,11 @@
 import java.util.regex.Pattern;
 
+/**
+ * Represents a user whose username and password have passed validation.
+ *
+ * <p>The validation rules are enforced when an instance is created; invalid values cause an
+ * {@link IllegalArgumentException}.</p>
+ */
 // מייצגת משתמש שנוצר רק לאחר אימות שם המשתמש והסיסמה.
 public class User {
     // תבנית האימייל: חלק מקומי, דומיין שמתחיל באות או בספרה וסיומת של לפחות שתי אותיות.
@@ -13,6 +19,13 @@ public class User {
     private final String password;
 
     // אם אחד האימותים נכשל, נזרקת חריגה ויצירת המשתמש אינה מושלמת.
+    /**
+     * Creates a user after validating both supplied values.
+     *
+     * @param username the email-style username to validate
+     * @param password the password to validate
+     * @throws IllegalArgumentException if either value violates the validation rules
+     */
     public User(String username, String password) {
         validateUsername(username);
         validatePassword(password);
@@ -21,11 +34,21 @@ public class User {
     }
 
     // מחזירה את שם המשתמש לקריאה.
+    /**
+     * Returns this user's username.
+     *
+     * @return the validated username
+     */
     public String getUsername() {
         return username;
     }
 
     // מחזירה את הסיסמה לצורך הפלט הנדרש בתרגיל.
+    /**
+     * Returns this user's password.
+     *
+     * @return the validated password
+     */
     public String getPassword() {
         return password;
     }

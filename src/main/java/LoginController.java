@@ -8,16 +8,25 @@ import javafx.scene.Scene;
 import javafx.stage.Stage;
 import java.io.IOException;
 
+/**
+ * Handles login form actions and switches to the welcome screen for matching credentials.
+ */
 public class LoginController {
 
+    /** Username input field injected from the login FXML. */
     @FXML
     private TextField nameField;
+    /** Password input field injected from the login FXML. */
     @FXML
     private TextField passField;
+    /** Error message shown when the entered credentials do not match a user. */
     @FXML
     private Label errorLabel;
 
-
+    /**
+     * Checks the entered credentials against the users supplied by the application window.
+     * A match opens the welcome screen; otherwise, the error label is shown.
+     */
     @FXML
     private void click() {
         String username = nameField.getText();
@@ -44,9 +53,16 @@ public class LoginController {
 
     private ArrayList<User> users;
 
+    /**
+     * Supplies the users that can log in through this screen.
+     *
+     * @param users valid users read from the application input file
+     */
     public void setUsers(ArrayList<User> users) {
         this.users = users;
     }
+
+    /** Loads the welcome FXML and displays it in the current window. */
     private void showWelcome() {
         try {
             Parent root = FXMLLoader.load(
