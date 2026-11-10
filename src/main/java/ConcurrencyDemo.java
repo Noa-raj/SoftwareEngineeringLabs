@@ -7,7 +7,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 /**
- * Compares a coordinated unsynchronized counter with a synchronized counter.
+ * Demonstrates lost updates and verifies a concurrent login lockout threshold.
  */
 public final class ConcurrencyDemo {
     private ConcurrencyDemo() {
@@ -15,7 +15,7 @@ public final class ConcurrencyDemo {
 
     /**
      * Runs the same number of increments from multiple threads with and without synchronization.
-     * The unsynchronized workers are coordinated so they all read a round's value before writing.
+     * Workers coordinate each round so they all read before writing.
      */
     public static Result run(int threadCount, int incrementsPerThread) throws Exception {
         if (threadCount < 2 || incrementsPerThread < 1) {
@@ -53,6 +53,62 @@ public final class ConcurrencyDemo {
         }
     }
 
+    /**
+     * Verifies the configured lockout boundary with concurrent failures for one known email.
+     * An isolated tracker ensures the live application's lockout state is unchanged.
+     */
+    public static LoginThresholdResult runLoginThreshold(AttemptTracker source, String email)
+            throws Exception {
+        User user = source.findUser(email);
+        if (user == null) {
+            throw new IllegalArgumentException("Enter an email address from users.txt first");
+        }
+
+        int threshold = source.getMaximumAttempts();
+        AttemptTracker isolated = new AttemptTracker(List.of(user), threshold,
+                source.getLockoutSeconds());
+        isolated.startWorkers();
+        try {
+            int beforeThreshold = threshold - 1;
+            runConcurrentAttempts(isolated, email, 20, beforeThreshold);
+            int countBeforeThreshold = isolated.getUserState(email).getFailedAttempts();
+            int remainingBeforeThreshold = isolated.getRemainingLockoutSeconds(email);
+            UserState.FailureResult thresholdResult = isolated.recordFailure(email);
+
+            return new LoginThresholdResult(threshold, beforeThreshold, countBeforeThreshold,
+                    remainingBeforeThreshold == 0, thresholdResult.locked(),
+                    thresholdResult.remainingLockoutSeconds());
+        } finally {
+            isolated.close();
+        }
+    }
+
+    private static void runConcurrentAttempts(AttemptTracker tracker, String email,
+                                              int threadCount, int attempts)
+            throws Exception {
+        ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+        CyclicBarrier start = new CyclicBarrier(threadCount);
+        List<Future<?>> tasks = new ArrayList<>();
+        try {
+            for (int i = 0; i < threadCount; i++) {
+                int attemptsForThread = attempts / threadCount
+                        + (i < attempts % threadCount ? 1 : 0);
+                tasks.add(executor.submit(() -> {
+                    await(start);
+                    for (int attempt = 0; attempt < attemptsForThread; attempt++) {
+                        tracker.recordFailure(email);
+                    }
+                    return null;
+                }));
+            }
+            for (Future<?> task : tasks) {
+                task.get();
+            }
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
     private static void await(CyclicBarrier barrier) {
         try {
             barrier.await();
@@ -82,5 +138,11 @@ public final class ConcurrencyDemo {
         public int expectedCount() {
             return threadCount * incrementsPerThread;
         }
+    }
+
+    public record LoginThresholdResult(int threshold, int attemptsBeforeThreshold,
+                                       int observedFailures, boolean notLockedBeforeThreshold,
+                                       boolean lockedAtThreshold,
+                                       int remainingLockoutSeconds) {
     }
 }

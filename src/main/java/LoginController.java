@@ -50,22 +50,29 @@ public class LoginController {
         taskThread.start();
     }
 
-    /**
-     * Runs a separate synchronized/unsynchronized counter demonstration off the UI thread.
-     */
+    /** Runs the lockout threshold and synchronized-counter demonstrations off the UI thread. */
     @FXML
     private void runConcurrencyDemo() {
         concurrencyDemoButton.setDisable(true);
         concurrencyDemoLabel.setText("Running concurrency demonstration...");
         Thread taskThread = new Thread(() -> {
             try {
+                String email = nameField.getText();
+                ConcurrencyDemo.LoginThresholdResult loginResult =
+                        ConcurrencyDemo.runLoginThreshold(attemptTracker, email);
                 ConcurrencyDemo.Result result = ConcurrencyDemo.run(20, 100);
                 javafx.application.Platform.runLater(() -> {
                     concurrencyDemoLabel.setText(
-                            "Expected: " + result.expectedCount()
-                                    + " | Without synchronized: "
+                            email + ": " + loginResult.observedFailures()
+                                    + " concurrent failures counted; not locked at "
+                                    + loginResult.attemptsBeforeThreshold() + ": "
+                                    + loginResult.notLockedBeforeThreshold()
+                                    + "; locked at n=" + loginResult.threshold() + ": "
+                                    + loginResult.lockedAtThreshold()
+                                    + ". Counter demo (expected " + result.expectedCount()
+                                    + "): without synchronized "
                                     + result.unsynchronizedCount()
-                                    + " | With synchronized: " + result.synchronizedCount());
+                                    + ", with synchronized " + result.synchronizedCount());
                     concurrencyDemoButton.setDisable(false);
                     demoThread.set(null);
                 });

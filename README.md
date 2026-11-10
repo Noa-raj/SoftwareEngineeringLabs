@@ -26,19 +26,60 @@ In IntelliJ IDEA, open `pom.xml` as a project. In Eclipse, use
 3. Drag controls onto the layout, edit their properties, and save the FXML file.
 4. Run (or restart) the graphical application using the command below.
 
-All layout is in FXML; `UsersWindow.java` only loads it and opens the window.
-Scene Builder edits JavaFX FXML, so JavaFX is still the runtime dependency even
-though you do not write Java layout code. This is a starter screen, not a GUI
-implementation of the console program. Interactive actions would need a Java
-controller and event handlers in addition to the Scene Builder design.
+The layouts are in FXML and are handled by `LoginController`. The application
+reads `users.txt` off the JavaFX application thread, then creates and updates
+the screen on the JavaFX thread. Scene Builder edits the FXML; login behavior
+and background work are implemented in Java.
 
-## Run the graphical application
+## Run the Lab 3 graphical application
 
-From a terminal in the repository root (PowerShell or CMD):
+The application requires two positive integer arguments: `n` is the maximum
+number of consecutive failed attempts for one known email, and `t` is the
+lockout duration in seconds. Missing, invalid, or non-positive values are
+requested again in the console before JavaFX starts.
+
+From a terminal in the repository root (PowerShell or CMD), pass the arguments
+to the JavaFX Maven plugin:
 
 ```bat
-.\mvnw.cmd javafx:run
+.\mvnw.cmd javafx:run -Djavafx.args="3 30"
 ```
+
+For an IDE run configuration, set **Program arguments** to `3 30`. The login
+screen disables its inputs while processing each attempt. Known emails are
+tracked independently in memory; unknown emails receive the same generic
+invalid-credentials message and are not tracked. A lockout remains in effect
+even when the correct password is entered, and its remaining time is displayed.
+
+`LoginTask` and `CountdownTask` implement `Runnable`, separating work from the
+thread used to run it. `BlockCheckThread` and `FailureWorker` extend `Thread`
+for the dedicated thread types required by the lab. Daemon failure workers
+consume per-email, capacity-one `BlockingQueue`s. The per-email `UserState`
+synchronizes access to counters and lockout times.
+`CountdownTask` sleeps between UI updates rather than busy-waiting. Background
+tasks return UI changes through `Platform.runLater`.
+
+## Run tests
+
+```bat
+.\mvnw.cmd clean verify
+```
+
+Tests load a separate `src\test\resources\users.txt`, exercise valid and
+invalid login attempts and lockout behavior, and use concurrent failures to
+check the attempt threshold. `ConcurrencyDemonstrationTest` also coordinates
+two unsynchronized increments to demonstrate a lost update, then verifies that
+the synchronized user state preserves both updates.
+The login screen also has a **Run concurrency demonstration** button. Enter a
+known email first; it runs 20 threads against an isolated copy of that account's
+state, checks that the account is not locked at `n - 1` failures and is locked
+at `n`, and leaves the live account unchanged. It also compares 100 counter
+increments per thread with and without synchronization. Results are displayed
+on screen after the background work completes.
+
+For the lab submission, keep the Lab 2 and Lab 3 branches separate. Make at
+least four meaningful commits on the Lab 3 branch and capture the requested
+commit-history screenshots manually.
 
 ## Run the existing console application
 

@@ -66,6 +66,16 @@ public class AttemptTracker implements AutoCloseable {
         return states.get(email);
     }
 
+    /** Returns the configured failed-attempt threshold. */
+    public int getMaximumAttempts() {
+        return maximumAttempts;
+    }
+
+    /** Returns the configured lockout duration in seconds. */
+    public int getLockoutSeconds() {
+        return lockoutSeconds;
+    }
+
     /**
      * Sends a failed attempt through that email's bounded queue and waits for its worker's result.
      */
