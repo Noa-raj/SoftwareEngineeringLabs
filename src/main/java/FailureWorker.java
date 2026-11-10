@@ -1,21 +1,14 @@
 import java.util.concurrent.ArrayBlockingQueue;
 
 /**
- * Processes failed-login events for one email on a daemon thread.
+ * Processes failed-login events from the shared bounded queue on a daemon thread.
  */
 public class FailureWorker extends Thread {
     private final ArrayBlockingQueue<FailedAttempt> queue;
-    private final UserState userState;
-    private final int maximumAttempts;
-    private final int lockoutSeconds;
 
-    FailureWorker(String email, ArrayBlockingQueue<FailedAttempt> queue, UserState userState,
-                  int maximumAttempts, int lockoutSeconds) {
-        super("failure-worker-" + email);
+    FailureWorker(int workerNumber, ArrayBlockingQueue<FailedAttempt> queue) {
+        super("failure-worker-" + workerNumber);
         this.queue = queue;
-        this.userState = userState;
-        this.maximumAttempts = maximumAttempts;
-        this.lockoutSeconds = lockoutSeconds;
         setDaemon(true);
     }
 
@@ -26,7 +19,8 @@ public class FailureWorker extends Thread {
             try {
                 attempt = queue.take();
                 UserState.FailureResult result =
-                        userState.recordFailure(maximumAttempts, lockoutSeconds);
+                        attempt.userState().recordFailure(
+                                attempt.maximumAttempts(), attempt.lockoutSeconds());
                 attempt.response().complete(result);
             } catch (InterruptedException exception) {
                 if (attempt != null) {

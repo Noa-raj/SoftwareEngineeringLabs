@@ -21,6 +21,7 @@ class AttemptTrackerTest {
         AttemptTracker tracker = trackerFor("parallel@example.com", maximumAttempts, 3);
         tracker.startWorkers();
         try {
+            assertEquals(2, tracker.getFailureWorkerCount());
             runConcurrentFailures(tracker, "parallel@example.com", 8, 30);
             assertEquals(240, tracker.getUserState("parallel@example.com").getFailedAttempts());
             assertEquals(0, tracker.getRemainingLockoutSeconds("parallel@example.com"));

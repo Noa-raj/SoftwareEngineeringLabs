@@ -52,12 +52,15 @@ invalid-credentials message and are not tracked. A lockout remains in effect
 even when the correct password is entered, and its remaining time is displayed.
 
 `LoginTask` and `CountdownTask` implement `Runnable`, separating work from the
-thread used to run it. `BlockCheckThread` and `FailureWorker` extend `Thread`
-for the dedicated thread types required by the lab. Daemon failure workers
-consume per-email, capacity-one `BlockingQueue`s. The per-email `UserState`
-synchronizes access to counters and lockout times.
-`CountdownTask` sleeps between UI updates rather than busy-waiting. Background
-tasks return UI changes through `Platform.runLater`.
+thread used to run it; this is useful when task logic should not be tied to a
+particular thread and can be run by different thread mechanisms. `BlockCheckThread`
+and `FailureWorker` extend `Thread` to provide the dedicated thread types
+required by the lab. Two daemon failure workers consume events from a shared,
+capacity-one `BlockingQueue`. The per-email `UserState` synchronizes access to
+counters and lockout times. The login task joins the lock-check thread, and
+`CountdownTask` sleeps between updates rather than busy-waiting. These threads
+handle interruption during shutdown. Background tasks return UI changes through
+`Platform.runLater`, keeping JavaFX updates on the application thread.
 
 ## Run tests
 

@@ -12,7 +12,7 @@ import java.util.concurrent.ExecutionException;
 public class AttemptTracker implements AutoCloseable {
     private final Map<String, User> usersByEmail = new ConcurrentHashMap<>();
     private final Map<String, UserState> states = new ConcurrentHashMap<>();
-    private final Map<String, ArrayBlockingQueue<FailedAttempt>> queues = new ConcurrentHashMap<>();
+    private final ArrayBlockingQueue<FailedAttempt> queue = new ArrayBlockingQueue<>(1);
     private final List<FailureWorker> workers = new ArrayList<>();
     private final int maximumAttempts;
     private final int lockoutSeconds;
@@ -37,7 +37,6 @@ public class AttemptTracker implements AutoCloseable {
             if (usersByEmail.putIfAbsent(email, user) == null) {
                 UserState state = new UserState();
                 states.put(email, state);
-                queues.put(email, new ArrayBlockingQueue<>(1));
             }
         }
     }
@@ -47,12 +46,11 @@ public class AttemptTracker implements AutoCloseable {
         if (started) {
             return;
         }
-        queues.forEach((email, queue) -> {
-            FailureWorker worker = new FailureWorker(
-                    email, queue, states.get(email), maximumAttempts, lockoutSeconds);
+        for (int i = 0; i < 2; i++) {
+            FailureWorker worker = new FailureWorker(i + 1, queue);
             workers.add(worker);
             worker.start();
-        });
+        }
         started = true;
     }
 
@@ -76,6 +74,10 @@ public class AttemptTracker implements AutoCloseable {
         return lockoutSeconds;
     }
 
+    int getFailureWorkerCount() {
+        return workers.size();
+    }
+
     /**
      * Sends a failed attempt through that email's bounded queue and waits for its worker's result.
      */
@@ -84,13 +86,13 @@ public class AttemptTracker implements AutoCloseable {
         if (!started) {
             throw new IllegalStateException("Failure workers have not been started");
         }
-        ArrayBlockingQueue<FailedAttempt> queue = queues.get(email);
-        if (queue == null) {
+        UserState userState = states.get(email);
+        if (userState == null) {
             throw new IllegalArgumentException("Cannot track an unknown email");
         }
 
         CompletableFuture<UserState.FailureResult> response = new CompletableFuture<>();
-        queue.put(new FailedAttempt(response));
+        queue.put(new FailedAttempt(userState, maximumAttempts, lockoutSeconds, response));
         return response.get();
     }
 
