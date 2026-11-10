@@ -1,0 +1,16 @@
+alice@example.com Alice123!
+bob@example.org Bob456@x
+carol@example.net Carol789#
+dana@example.com Dana1234!
+erin@example.org Erin5678@
+frank@example.net Frank9012#
+grace@example.com Grace3456$
+heidi@example.org Heidi7890%
+ivan@example.net Ivan12345^
+judy@example.com Judy6789&
+mallory@example.org Mallory12*
+nia@example.net Nia34567(
+oscar@example.com Oscar8901)
+peggy@example.org Peggy2345_
+trent@example.net Trent6789+
+invalid-email NotAUser1!

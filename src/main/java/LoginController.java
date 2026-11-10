@@ -1,87 +1,185 @@
+import java.io.IOException;
+import java.util.concurrent.atomic.AtomicReference;
+
 import javafx.fxml.FXML;
-import java.util.ArrayList;
-import javafx.scene.control.TextField;
-import javafx.scene.control.Label;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
 import javafx.stage.Stage;
-import java.io.IOException;
 
 /**
- * Handles login form actions and switches to the welcome screen for matching credentials.
+ * Starts background login and countdown tasks and applies their results to the login screen.
  */
 public class LoginController {
-
-    /** Username input field injected from the login FXML. */
     @FXML
     private TextField nameField;
-    /** Password input field injected from the login FXML. */
     @FXML
     private TextField passField;
-    /** Error message shown when the entered credentials do not match a user. */
     @FXML
     private Label errorLabel;
+    @FXML
+    private Button loginButton;
+    @FXML
+    private Button concurrencyDemoButton;
+    @FXML
+    private Label concurrencyDemoLabel;
+
+    private final AtomicReference<Thread> loginThread = new AtomicReference<>();
+    private final AtomicReference<Thread> countdownThread = new AtomicReference<>();
+    private final AtomicReference<Thread> demoThread = new AtomicReference<>();
+    private AttemptTracker attemptTracker;
 
     /**
-     * Checks the entered credentials against the users supplied by the application window.
-     * A match opens the welcome screen; otherwise, the error label is shown.
+     * Captures the form values and processes the attempt on a new worker thread.
      */
     @FXML
     private void click() {
-        String username = nameField.getText();
+        String email = nameField.getText();
         String password = passField.getText();
+        stopCountdown();
+        setControlsDisabled(true);
+        errorLabel.setVisible(false);
 
-        boolean found = false;
+        Thread taskThread = new Thread(
+                new LoginTask(email, password, attemptTracker, result -> showResult(email, result)),
+                "login-task");
+        loginThread.set(taskThread);
+        taskThread.start();
+    }
 
-        for (User user : users) {
-            if (user.getUsername().equals(username) &&
-                    user.getPassword().equals(password)) {
-
-                found = true;
-                break;
+    /**
+     * Runs a separate synchronized/unsynchronized counter demonstration off the UI thread.
+     */
+    @FXML
+    private void runConcurrencyDemo() {
+        concurrencyDemoButton.setDisable(true);
+        concurrencyDemoLabel.setText("Running concurrency demonstration...");
+        Thread taskThread = new Thread(() -> {
+            try {
+                ConcurrencyDemo.Result result = ConcurrencyDemo.run(20, 100);
+                javafx.application.Platform.runLater(() -> {
+                    concurrencyDemoLabel.setText(
+                            "Expected: " + result.expectedCount()
+                                    + " | Without synchronized: "
+                                    + result.unsynchronizedCount()
+                                    + " | With synchronized: " + result.synchronizedCount());
+                    concurrencyDemoButton.setDisable(false);
+                    demoThread.set(null);
+                });
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+            } catch (Exception exception) {
+                javafx.application.Platform.runLater(() -> {
+                    concurrencyDemoLabel.setText(
+                            "Concurrency demonstration failed: " + exception.getMessage());
+                    concurrencyDemoButton.setDisable(false);
+                    demoThread.set(null);
+                });
             }
-        }
+        }, "concurrency-demonstration");
+        demoThread.set(taskThread);
+        taskThread.setDaemon(true);
+        taskThread.start();
+    }
 
-        if (found) {
-            errorLabel.setVisible(false);
-            showWelcome();
-        } else {
-            errorLabel.setVisible(true);
+    /** Supplies the shared login state and its failure workers. */
+    public void setAttemptTracker(AttemptTracker attemptTracker) {
+        this.attemptTracker = attemptTracker;
+    }
+
+    /** Stops login and countdown work when the application window is closing. */
+    public void shutdown() {
+        Thread activeLogin = loginThread.getAndSet(null);
+        if (activeLogin != null) {
+            activeLogin.interrupt();
+        }
+        stopCountdown();
+        Thread activeDemo = demoThread.getAndSet(null);
+        if (activeDemo != null) {
+            activeDemo.interrupt();
         }
     }
 
-    private ArrayList<User> users;
+    private void showResult(String email, LoginTask.Result result) {
+        loginThread.set(null);
+        switch (result.status()) {
+            case SUCCESS -> {
+                errorLabel.setVisible(false);
+                showWelcome();
+            }
+            case INVALID -> {
+                if (result.attemptsRemaining() >= 0) {
+                    errorLabel.setText("Invalid username or password. Attempts remaining: "
+                            + result.attemptsRemaining());
+                } else {
+                    errorLabel.setText("Invalid username or password");
+                }
+                errorLabel.setVisible(true);
+                setControlsDisabled(false);
+            }
+            case LOCKED -> {
+                errorLabel.setText("Account locked. Try again in "
+                        + result.remainingLockoutSeconds() + " seconds.");
+                errorLabel.setVisible(true);
+                startCountdown(email);
+                setControlsDisabled(false);
+            }
+            case ERROR -> {
+                errorLabel.setText("Login could not be completed. Please try again.");
+                errorLabel.setVisible(true);
+                setControlsDisabled(false);
+            }
+        }
+    }
 
-    /**
-     * Supplies the users that can log in through this screen.
-     *
-     * @param users valid users read from the application input file
-     */
-    public void setUsers(ArrayList<User> users) {
-        this.users = users;
+    private void startCountdown(String email) {
+        stopCountdown();
+        Thread taskThread = new Thread(new CountdownTask(attemptTracker, email, remainingSeconds -> {
+            if (!email.equals(nameField.getText())) {
+                return;
+            }
+            if (remainingSeconds == 0) {
+                errorLabel.setVisible(false);
+                stopCountdown();
+            } else {
+                errorLabel.setText("Account locked. Try again in "
+                        + remainingSeconds + " seconds.");
+                errorLabel.setVisible(true);
+            }
+        }), "lockout-countdown");
+        taskThread.setDaemon(true);
+        countdownThread.set(taskThread);
+        taskThread.start();
+    }
+
+    private void stopCountdown() {
+        Thread activeCountdown = countdownThread.getAndSet(null);
+        if (activeCountdown != null) {
+            activeCountdown.interrupt();
+        }
+    }
+
+    private void setControlsDisabled(boolean disabled) {
+        nameField.setDisable(disabled);
+        passField.setDisable(disabled);
+        loginButton.setDisable(disabled);
     }
 
     /** Loads the welcome FXML and displays it in the current window. */
     private void showWelcome() {
         try {
             Parent root = FXMLLoader.load(
-                    getClass().getResource(
-                            "/com/example/users/welcome-view.fxml"
-                    )
-            );
-
-            Stage stage = (Stage) nameField
-                    .getScene()
-                    .getWindow();
-
+                    getClass().getResource("/com/example/users/welcome-view.fxml"));
+            Stage stage = (Stage) nameField.getScene().getWindow();
             stage.setScene(new Scene(root));
             stage.setTitle("Welcome");
             stage.show();
-
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (IOException exception) {
+            exception.printStackTrace();
+            setControlsDisabled(false);
         }
     }
-
 }

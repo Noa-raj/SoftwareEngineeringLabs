@@ -32,5 +32,4 @@ replay_pid*
 .idea/
 *.iml
 
-#test folder
-/src/test/
+!/src/test/resources/users.txt

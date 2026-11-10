@@ -21,5 +21,8 @@
                 <TextField fx:id="passField" prefHeight="26.0" prefWidth="444.0" />
         </HBox>
    <Label fx:id="errorLabel" text="Invalid username or password" textFill="RED" visible="false" />
-        <Button mnemonicParsing="false" onAction="#click" text="Log in" />
+        <Button fx:id="loginButton" mnemonicParsing="false" onAction="#click" text="Log in" />
+        <Button fx:id="concurrencyDemoButton" mnemonicParsing="false"
+                onAction="#runConcurrencyDemo" text="Run concurrency demonstration" />
+        <Label fx:id="concurrencyDemoLabel" wrapText="true" />
 </VBox>
