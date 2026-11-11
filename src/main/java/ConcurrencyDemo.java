@@ -57,31 +57,52 @@ public final class ConcurrencyDemo {
      * Verifies the configured lockout boundary with concurrent failures for one known email.
      * An isolated tracker ensures the live application's lockout state is unchanged.
      */
-    public static LoginThresholdResult runLoginThreshold(AttemptTracker source, String email)
-            throws Exception {
-        User user = source.findUser(email);
-        if (user == null) {
-            throw new IllegalArgumentException("Enter an email address from users.txt first");
-        }
-
-        int threshold = source.getMaximumAttempts();
-        AttemptTracker isolated = new AttemptTracker(List.of(user), threshold,
-                source.getLockoutSeconds());
-        isolated.startWorkers();
-        try {
-            int beforeThreshold = threshold - 1;
-            runConcurrentAttempts(isolated, email, 20, beforeThreshold);
-            int countBeforeThreshold = isolated.getUserState(email).getFailedAttempts();
-            int remainingBeforeThreshold = isolated.getRemainingLockoutSeconds(email);
-            UserState.FailureResult thresholdResult = isolated.recordFailure(email);
-
-            return new LoginThresholdResult(threshold, beforeThreshold, countBeforeThreshold,
-                    remainingBeforeThreshold == 0, thresholdResult.locked(),
-                    thresholdResult.remainingLockoutSeconds());
-        } finally {
-            isolated.close();
-        }
+    
+public static LoginThresholdResult runLoginThreshold(AttemptTracker source, String email)
+        throws Exception {
+    User user = source.findUser(email);
+    if (user == null) {
+        throw new IllegalArgumentException("Enter an email address from users.txt first");
     }
+
+    int threshold = 10000;
+    AttemptTracker isolated = new AttemptTracker(List.of(user), threshold,
+            source.getLockoutSeconds());
+    isolated.startWorkers();
+
+    try {
+        // Step 1: 20 threads, 499 failed attempts each = 9980
+        runConcurrentAttempts(isolated, email, 20, 9980);
+
+        int countAfterThreads = isolated.getUserState(email).getFailedAttempts();
+        if (countAfterThreads != 9980) {
+    throw new IllegalStateException(
+            "Expected 9980 failures, but got " + countAfterThreads);
+        }
+
+        // Step 2: 19 more failures - account must not be locked
+        for (int i = 0; i < 19; i++) {
+            isolated.recordFailure(email);
+        }
+
+        int countBeforeThreshold = isolated.getUserState(email).getFailedAttempts();
+        boolean notLockedBeforeThreshold =
+        countBeforeThreshold == 9999
+        && isolated.getRemainingLockoutSeconds(email) == 0;
+
+        // Step 3: failure number 10000 must lock the account
+        UserState.FailureResult thresholdResult = isolated.recordFailure(email);
+
+        return new LoginThresholdResult(threshold, countBeforeThreshold,
+                countAfterThreads, notLockedBeforeThreshold,
+                thresholdResult.locked(),
+                thresholdResult.remainingLockoutSeconds());
+
+    } finally {
+        isolated.close();
+    }
+}
+
 
     private static void runConcurrentAttempts(AttemptTracker tracker, String email,
                                               int threadCount, int attempts)
