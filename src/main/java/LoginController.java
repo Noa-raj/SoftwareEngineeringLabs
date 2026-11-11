@@ -52,12 +52,14 @@ public class LoginController {
 
     /** Runs the lockout threshold and synchronized-counter demonstrations off the UI thread. */
     @FXML
-    private void runConcurrencyDemo() {
-        concurrencyDemoButton.setDisable(true);
-        concurrencyDemoLabel.setText("Running concurrency demonstration...");
-        Thread taskThread = new Thread(() -> {
-            try {
-                String email = nameField.getText();
+private void runConcurrencyDemo() {
+    concurrencyDemoButton.setDisable(true);
+    concurrencyDemoLabel.setText("Running concurrency demonstration...");
+
+    String email = nameField.getText();
+
+    Thread taskThread = new Thread(() -> {
+        try {
                 ConcurrencyDemo.LoginThresholdResult loginResult =
                         ConcurrencyDemo.runLoginThreshold(attemptTracker, email);
                 ConcurrencyDemo.Result result = ConcurrencyDemo.run(20, 100);
