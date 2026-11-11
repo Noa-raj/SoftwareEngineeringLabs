@@ -132,7 +132,7 @@ public class LoginController {
                         + result.remainingLockoutSeconds() + " seconds.");
                 errorLabel.setVisible(true);
                 startCountdown(email);
-                setControlsDisabled(false);
+                setControlsDisabled(true);
             }
             case ERROR -> {
                 errorLabel.setText("Login could not be completed. Please try again.");
@@ -151,6 +151,7 @@ public class LoginController {
             if (remainingSeconds == 0) {
                 errorLabel.setVisible(false);
                 stopCountdown();
+                setControlsDisabled(false);
             } else {
                 errorLabel.setText("Account locked. Try again in "
                         + remainingSeconds + " seconds.");
